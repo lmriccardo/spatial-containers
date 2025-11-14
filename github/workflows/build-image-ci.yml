@@ -1,0 +1,48 @@
+name: Build C++ Docker Image
+
+on:
+  push:
+    branches:
+      - devel
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Permission to read the repo files
+      packages: write # Necessary to push packages/images to GHCR
+    
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: 🔐 Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏗 Build Docker image and Tag with SHA
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/spatial-container
+          docker build -t $IMAGE_NAME:latest .
+          docker tag $IMAGE_NAME:latest $IMAGE_NAME:${{ github.sha }}
+
+      - name: 🔍 Check if image with this SHA already exists
+        id: check
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/spatial-container:${{ github.sha }}
+          if docker manifest inspect "$IMAGE_NAME" > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: ⬆️ Push Docker image
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/spatial-container
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:${{ github.sha }}

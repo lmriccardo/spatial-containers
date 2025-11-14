@@ -1,0 +1,54 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - devel
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read  # Needed to pull GHCR images
+    
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if image exists
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/spatial-container:latest
+          if ! docker manifest inspect $IMAGE > /dev/null 2>&1; then
+            echo "Image does not exist. Skipping tests."
+            exit 78
+          fi
+
+      - name: 🐳 Pull Docker Image
+        run: |
+          docker pull ghcr.io/${{ github.repository }}/spatial-container:latest
+      
+      - name: ✅ Run CTests inside the container
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ghcr.io/${{ github.repository }}/spatial-container:latest \
+            bash -c "
+              mkdir -p build &&
+              cmake -S . -B build -DCMAKE_BUILD_TYPE=Release &&
+              cmake --build build --config Release &&
+              ctest --test-dir build --output-on-failure -C Release
+            "
