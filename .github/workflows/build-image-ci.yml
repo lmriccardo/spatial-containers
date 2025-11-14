@@ -34,14 +34,20 @@ jobs:
       - name: 🔍 Check if image with this SHA already exists
         id: check
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository }}/spatial-container:${{ github.sha }}
-          if docker manifest inspect "$IMAGE_NAME" > /dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+          LOCAL_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE_NAME || echo "")
+          REMOTE_DIGEST=$(docker manifest inspect $IMAGE_NAME 2>/dev/null | jq -r '.config.digest' || echo "")
+          
+          echo "LOCAL_DIGEST=$LOCAL_DIGEST" >> $GITHUB_ENV
+          echo "REMOTE_DIGEST=$REMOTE_DIGEST" >> $GITHUB_ENV
+          
+          if [ "$LOCAL_DIGEST" = "$REMOTE_DIGEST" ]; then
+            echo "CHANGED=false" >> $GITHUB_OUTPUT
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "CHANGED=true" >> $GITHUB_OUTPUT
           fi
 
       - name: ⬆️ Push Docker image
+        if: steps.check.outputs.CHANGED == 'true'
         run: |
           IMAGE_NAME=ghcr.io/${{ github.repository }}/spatial-container
           docker push $IMAGE_NAME:latest

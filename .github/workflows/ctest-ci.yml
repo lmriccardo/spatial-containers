@@ -50,5 +50,13 @@ jobs:
               mkdir -p build &&
               cmake -S . -B build -DCMAKE_BUILD_TYPE=Release &&
               cmake --build build --config Release &&
-              ctest --test-dir build --output-on-failure -C Release
+              ctest --test-dir build --output-on-failure -C Release \
+                --output-junit test_results.xml
             "
+      
+      - name: Generate Custom Test Badge
+        uses: gaelgirodon/ci-badges-action@v1
+        if: always()
+        with:
+          gist-id: ${{ secrets.TEST_BADGE_GIST_ID }}
+          token: ${{ secrets.GIST_TOKEN }}
