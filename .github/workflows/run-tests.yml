@@ -21,8 +21,24 @@ jobs:
     steps:
       - name: ⬇️ Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 1 || 2 }}
+
+      # Uses this step to check which files have been changed by the
+      # current push. If there are no source files than skip
+      - name: ➕ Check Source file changes
+        id: file-change-step
+        uses: tj-actions/changed-files@v47
+        with:
+          files_ignore: |
+            .vscode/**
+            .devcontainer/**
+            .gitignore
+            LICENSE
+            **/*.md
 
       - name: 🔐 Log in to GHCR
+        if: steps.file-change-step.outputs.all_changed_files_count != '0'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -54,9 +70,13 @@ jobs:
                 --output-junit test_results.xml
             "
       
-      - name: Generate Custom Test Badge
+      - name: 🏵️ Generate Custom Test Badge
         uses: gaelgirodon/ci-badges-action@v1
         if: always()
         with:
           gist-id: ${{ secrets.TEST_BADGE_GIST_ID }}
           token: ${{ secrets.GIST_TOKEN }}
+
+      - name: ➖ No Changed Files
+        if: steps.file-change-step.outputs.all_changed_files_count == '0'
+        run: echo "No source files have been changed!!"
