@@ -141,3 +141,33 @@ TEST(PointConstexprTest, CompileTimeInitialization) {
     constexpr point3d<int> p3(7);
     static_assert(p3.x() == 7 && p3.y() == 7 && p3.z() == 7, "point3d constexpr failed");
 }
+
+// =================== Compare and Put Tests ======================
+TEST(PointNDTest, ComparePutMin)
+{
+    using P = pointnd<int, 4>;
+
+    P p1{ 5, 1, 8, 3 };
+    P p2{ 7, 0, 4, 9 };
+
+    auto result = compare_put(p1, p2, std::ranges::min);
+
+    EXPECT_EQ(result[0], 5);
+    EXPECT_EQ(result[1], 0);
+    EXPECT_EQ(result[2], 4);
+    EXPECT_EQ(result[3], 3);
+}
+
+TEST(PointNDTest, ComparePutConstexpr)
+{
+    using P = pointnd<int, 3>;
+
+    constexpr P p1(3);
+    constexpr P p2(4);
+
+    constexpr P result = compare_put(p1, p2, [](int a, int b){ return std::min(a,b); });
+
+    static_assert(result[0] == 3);
+    static_assert(result[1] == 3);
+    static_assert(result[2] == 3);
+}

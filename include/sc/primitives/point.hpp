@@ -8,6 +8,18 @@
 namespace sc
 {
 
+struct point_tag {};
+
+/**
+ * Concept to identify a given class a generic point object
+ */
+template<class P>
+concept Point = requires(P p) {
+typename P::tag; // Requires at least the presence of the tag
+P::dim; // Requires the presence of the dim
+{ p[0] } -> std::convertible_to<typename P::value_type>;
+} && ( std::same_as<typename P::tag, point_tag> );
+
 /**
  * @brief A generic N-dimensional point
  * @tparam T The data type of array elements
@@ -20,6 +32,11 @@ protected:
     std::array<T, N> m_array;
 
 public:
+    using tag = point_tag;
+    using value_type = T;
+    
+    static constexpr std::size_t dim = N;
+
     constexpr pointnd() : m_array{} {}; // Default constructor
     
     // Construct with a default value
@@ -172,5 +189,13 @@ struct point3d : public pointnd<T,3>
     constexpr T const& z() const noexcept
     { return this->m_array[2]; }
 };
+
+template<Point P, class Compare>
+constexpr P compare_put(P const& p1, P const& p2, Compare cmp)
+{
+    P result{};
+    std::transform(p1.begin(), p1.end(), p2.begin(), result.begin(), cmp);
+    return result;
+}
 
 };

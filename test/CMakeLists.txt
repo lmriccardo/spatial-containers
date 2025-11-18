@@ -18,3 +18,4 @@ function(create_gtest_test test_name cpp_file)
 endfunction()
 
 create_gtest_test(PointTest unittests/point_gtest.cpp)
+create_gtest_test(BBoxTest unittests/bbox_gtest.cpp)
