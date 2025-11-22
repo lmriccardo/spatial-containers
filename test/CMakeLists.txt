@@ -19,3 +19,4 @@ endfunction()
 
 create_gtest_test(PointTest unittests/point_gtest.cpp)
 create_gtest_test(BBoxTest unittests/bbox_gtest.cpp)
+create_gtest_test(RTreeTest unittests/rtree_gtest.cpp)

@@ -188,3 +188,36 @@ TEST(BBoxTest, ExpandWithBBox3D) {
     EXPECT_EQ(box1.max()[1], 6);
     EXPECT_EQ(box1.max()[2], 7);
 }
+
+TEST(BBoxTest, Enlargement2D) {
+    bbox2d<int> box({0, 0}, {2, 2});
+    bbox2d<int> same({0, 0}, {2, 2});
+    bbox2d<int> larger({1, 1}, {4, 5});
+    bbox2d<int> outside({3, 0}, {5, 2});
+
+    EXPECT_EQ(box.enlargement(same), 0);
+    EXPECT_EQ(box.enlargement(larger), 16);
+    EXPECT_EQ(box.enlargement(outside), 6);
+}
+
+TEST(BBoxTest, Enlargement3D) {
+    bbox3d<int> box({0,0,0}, {2,2,2});
+    bbox3d<int> overlap({1,1,1}, {3,3,3});
+
+    EXPECT_EQ(box.enlargement(overlap), 27 - 8);
+
+    bbox3d<int> contained({0,0,0}, {1,1,1});
+    EXPECT_EQ(box.enlargement(contained), 0);
+}
+
+TEST(BBoxTest, EnlargementWithPoint) {
+    bbox2d<int> box({0,0}, {2,2});
+    bbox2d<int> pt({3,3}, {3,3});
+    EXPECT_EQ(box.enlargement(pt), 5);
+}
+
+TEST(BBoxTest, EnlargementNoChange) {
+    bbox2d<int> box({0,0}, {2,2});
+    bbox2d<int> inside({1,1}, {2,2});
+    EXPECT_EQ(box.enlargement(inside), 0);
+}

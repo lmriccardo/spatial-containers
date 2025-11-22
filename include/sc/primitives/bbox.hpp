@@ -5,78 +5,21 @@
 #include <ranges>
 #include <algorithm>
 #include <functional>
+
 #include "point.hpp"
+#include "sc/utils/traits.hpp"
+#include "sc/utils/functools.hpp"
 
 namespace sc
 {
 
-struct bbox_tag {};
-
-// Concepts to limit type to pointnd and bbox
-template<typename U>
-concept Containable =
-requires { typename U::tag; } &&
-( std::same_as<typename U::tag, point_tag> ||
-  std::same_as<typename U::tag, bbox_tag> 
-);
-
-template<class T>
-concept Numeric = std::is_arithmetic_v<T>;
-
+// Forward declaration of the bounding box class
 template<Numeric T, std::size_t N>
-class bbox
-{
-private:
-    pointnd<T, N> m_min; // The minimum corner of the bbox
-    pointnd<T, N> m_max; // The maximum corner of the bbox
+class bbox;
 
-public:
-    using tag = bbox_tag;
-
-    constexpr bbox()
-    {
-        // The default constructor sets the minimum to (0,0)
-        // and the maximum corner to the limits values for T
-        m_min.set( T{0} );
-        m_max.set( std::numeric_limits<T>::max() );
-    }
-
-    constexpr bbox( pointnd<T, N> const& min, pointnd<T, N> const& max )
-    : m_min( min ), m_max( max )
-    {}
-
-    constexpr bbox(const bbox&) = default;
-    constexpr bbox(bbox&&) = default;
-    constexpr bbox& operator=(const bbox&) = default;
-    constexpr bbox& operator=(bbox&&) = default;
-
-    ~bbox() = default;
-
-    constexpr pointnd<T, N> const& min() const noexcept
-    { return m_min; }
-    
-    constexpr pointnd<T, N> const& max() const noexcept
-    { return m_max; }
-
-    /**
-     * @brief Check if a point is contained into the box
-     */
-    template<Containable U>
-    constexpr bool contains( U const& obj ) const noexcept;
-    
-    /**
-     * @brief Merges the current bounding box with either an input
-     * N-dimensional point or another bounding box.
-     */
-    template<Containable U>
-    constexpr bbox<T,N> merge( U const& obj ) const noexcept;
-
-    /**
-     * @brief Perform in-place merge.
-     */
-    template<Containable U>
-    constexpr void expand( U const& obj ) noexcept;
-};
+// ================================================================================
+// HELPER FUNCTIONS FOR BOUNDING BOX
+// ================================================================================
 
 template<class T, std::size_t N>
 constexpr bool contains( bbox<T, N> const& box1, bbox<T, N> const& box2, 
@@ -114,20 +57,121 @@ constexpr bbox<T, N> merge( bbox<T,N> const& box, U const& obj ) noexcept
     return bbox<T, N>{ new_min, new_max };
 }
 
-template <Numeric T, std::size_t N>
-template <Containable U>
-constexpr inline bool bbox<T, N>::contains(U const &obj) const noexcept
-{ return sc::contains(*this, obj); }
+template<class T, std::size_t N, Containable U>
+constexpr bool overlaps( bbox<T, N> const& box1, bbox<T, N> const& box2, 
+    std::size_t idx ) noexcept
+{ return box1.max()[idx] < box2.min()[idx] || box2.max()[idx] < box1.min()[idx]; }
 
-template <Numeric T, std::size_t N>
-template <Containable U>
-inline constexpr bbox<T, N> bbox<T, N>::merge(U const &obj) const noexcept
-{ return sc::merge(*this, obj); }
+template<class T, std::size_t N, Containable U>
+constexpr bool overlaps( bbox<T, N> const& box1, U const& obj ) noexcept
+{
+    return std::ranges::all_of(
+        std::ranges::iota_view{std::size_t{0}, N},
+        [&](std::size_t i){ return overlaps(box1, obj, i); }
+    );
+}
 
-template <Numeric T, std::size_t N>
-template <Containable U>
-inline constexpr void bbox<T, N>::expand(U const &obj) noexcept
-{ *this = sc::merge(*this, obj); }
+template<class T, std::size_t N> constexpr T
+enlargement( bbox<T, N> const& box1, bbox<T, N> const& box2 ) noexcept
+{
+    T union_v{1}, origin_v{1};
+
+    for (std::size_t i = 0; i < N; ++i)
+    {
+        T new_max = std::max(box1.max()[i], box2.max()[i]);
+        T new_min = std::min(box1.min()[i], box2.min()[i]);
+        union_v *= new_max - new_min;
+        origin_v *= box1.max()[i] - box1.min()[i];
+    }
+
+    return union_v - origin_v;
+}
+
+// ================================================================================
+// ACTUAL IMPLEMENTATION OF THE BOUNDING BOX CLASS
+// ================================================================================
+
+template<Numeric T, std::size_t N>
+class bbox
+{
+private:
+    pointnd<T, N> m_min; // The minimum corner of the bbox
+    pointnd<T, N> m_max; // The maximum corner of the bbox
+
+public:
+    using tag = bbox_tag;
+
+    constexpr bbox()
+    {
+        // The default constructor sets the minimum to (0,0)
+        // and the maximum corner to the limits values for T
+        m_min.set( T{0} );
+        m_max.set( std::numeric_limits<T>::max() );
+    }
+
+    constexpr bbox( pointnd<T, N> const& min, pointnd<T, N> const& max )
+    : m_min( min ), m_max( max )
+    {}
+
+    constexpr bbox(const bbox&) = default;
+    constexpr bbox(bbox&&) = default;
+    constexpr bbox& operator=(const bbox&) = default;
+    constexpr bbox& operator=(bbox&&) = default;
+
+    ~bbox() = default;
+
+    constexpr pointnd<T, N> const& min() const noexcept
+    { return m_min; }
+    
+    constexpr pointnd<T, N> const& max() const noexcept
+    { return m_max; }
+
+    void set( T min, T max, std::size_t idx )
+    { m_min.set(idx, min); m_max.set(idx, max); }
+
+    /**
+     * @brief Check if a point is contained into the box
+     */
+    template<Containable U>
+    constexpr bool contains( U const& obj ) const noexcept
+    { return sc::contains(*this, obj); }
+
+    /**
+     * @brief Checks if the input box overlaps
+     */
+    template<Containable U>
+    constexpr bool overlaps( U const& obj ) const noexcept
+    { return sc::overlaps(*this, obj); }
+    
+    /**
+     * @brief Merges the current bounding box with either an input
+     * N-dimensional point or another bounding box.
+     */
+    template<Containable U>
+    constexpr bbox<T,N> merge( U const& obj ) const noexcept
+    { return sc::merge(*this, obj); }
+
+    /**
+     * @brief Perform in-place merge.
+     */
+    template<Containable U>
+    constexpr void expand( U const& obj ) noexcept
+    { *this = sc::merge(*this, obj); }
+
+    /**
+     * @brief Computes the enlargement required to fully contain another bbox.
+     * 
+     * This function calculates how much this bounding box would need to grow
+     * in order to completely include the input bounding box `other`. The 
+     * enlargement is measured as the increase in volume (or hyper-volume 
+     * in N dimensions). 
+     * 
+     * @param other The bounding box to include.
+     * @return The required enlargement as an integer value.
+     */
+    constexpr T enlargement( bbox<T,N> const& other ) const noexcept
+    { return sc::enlargement(*this, other); }
+};
 
 template<typename T>
 using bbox2d = bbox<T,2>;

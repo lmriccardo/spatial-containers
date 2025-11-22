@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "sc/primitives/point.hpp"
+#include "sc/utils/functools.hpp"
 
 using namespace sc;
 
