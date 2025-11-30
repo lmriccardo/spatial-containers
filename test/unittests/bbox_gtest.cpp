@@ -4,6 +4,17 @@
 
 using namespace sc;
 
+inline bbox2d<double> make_bbox2d(double x1, double y1, double x2, double y2) 
+{
+    return bbox2d<double>{{x1, y1}, {x2, y2}};
+}
+
+// Helper to construct a 3D bbox
+inline bbox3d<double> make_bbox3d(double x1, double y1, double z1, double x2, double y2, double z2) 
+{
+    return bbox3d<double>{{x1, y1, z1}, {x2, y2, z2}};
+}
+
 TEST(BBoxTest, ConstructionNumericType) {
     // Valid numeric type
     bbox<int, 4> box_int;
@@ -220,4 +231,50 @@ TEST(BBoxTest, EnlargementNoChange) {
     bbox2d<int> box({0,0}, {2,2});
     bbox2d<int> inside({1,1}, {2,2});
     EXPECT_EQ(box.enlargement(inside), 0);
+}
+
+TEST(BBoxTest, Overlaps2D) {
+    auto a = make_bbox2d(0,0,2,2);
+    auto b = make_bbox2d(1,1,3,3);
+    auto c = make_bbox2d(3,3,4,4);
+
+    EXPECT_TRUE(a.overlaps(b));   // partially overlapping
+    EXPECT_FALSE(a.overlaps(c));  // completely disjoint
+    EXPECT_TRUE(a.overlaps(a));   // overlaps with itself
+}
+
+TEST(BBoxTest, Contains2D) {
+    auto a = make_bbox2d(0,0,2,2);
+    auto b = make_bbox2d(0.5,0.5,1.5,1.5);
+    auto c = make_bbox2d(-1,-1,3,3);
+
+    EXPECT_TRUE(a.contains(b));   // b fully inside a
+    EXPECT_FALSE(a.contains(c));  // c bigger than a
+    EXPECT_TRUE(a.contains(a));   // a contains itself
+}
+
+TEST(BBoxTest, Overlaps3D) {
+    auto a = make_bbox3d(0,0,0,1,1,1);
+    auto b = make_bbox3d(0.5,0.5,0.5,1.5,1.5,1.5);
+    auto c = make_bbox3d(2,2,2,3,3,3);
+
+    EXPECT_TRUE(a.overlaps(b));   // partially overlapping
+    EXPECT_FALSE(a.overlaps(c));  // disjoint
+}
+
+TEST(BBoxTest, Contains3D) {
+    auto a = make_bbox3d(0,0,0,1,1,1);
+    auto b = make_bbox3d(0.1,0.1,0.1,0.9,0.9,0.9);
+    auto c = make_bbox3d(-1,-1,-1,2,2,2);
+
+    EXPECT_TRUE(a.contains(b));   // b fully inside a
+    EXPECT_FALSE(a.contains(c));  // c bigger than a
+}
+
+TEST(BBoxTest, HyperVolume) {
+    auto a = make_bbox2d(0,0,2,3);
+    auto b = make_bbox3d(0,0,0,2,3,4);
+
+    EXPECT_DOUBLE_EQ(a.hvolume(), 6.0); // 2*3
+    EXPECT_DOUBLE_EQ(b.hvolume(), 24.0); // 2*3*4
 }

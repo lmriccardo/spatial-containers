@@ -113,10 +113,25 @@ template<class _Tp, class _ComparisonOp>
 constexpr _Tp min( std::vector<_Tp> const& vec, _ComparisonOp comp )
 { return sc::min( vec, std::identity{}, comp ); }
 
-template<Point P, class Compare>
-constexpr P compare_put(P const& p1, P const& p2, Compare cmp)
+
+/**
+ * @brief Applies a binary operation element-wise to two iterables.
+ *
+ * Produces a new iterable where each element is `cmp(p1[i], p2[i])`.
+ * Both inputs must have the same size and support iteration and default
+ * construction.
+ *
+ * @tparam _I The iterable type for the first two inputs
+ * @tparam _Compare The comparator function type
+ *  
+ * @param p1  The first input iterable
+ * @param p2  The second input iterable
+ * @param cmp The comparator function
+ */
+template<Iterable _I, class _Compare>
+constexpr _I compare_put(_I const& p1, _I const& p2, _Compare cmp)
 {
-    P result{};
+    _I result{};
     std::transform(p1.begin(), p1.end(), p2.begin(), result.begin(), cmp);
     return result;
 }

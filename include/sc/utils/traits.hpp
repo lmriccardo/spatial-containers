@@ -2,6 +2,7 @@
 
 #include <type_traits>
 #include <concepts>
+#include <iterator>
 
 namespace sc
 {
@@ -18,6 +19,13 @@ typename P::tag; // Requires at least the presence of the tag
 P::dim; // Requires the presence of the dim
 { p[0] } -> std::convertible_to<typename P::value_type>;
 } && ( std::same_as<typename P::tag, point_tag> );
+
+template<class Iter>
+concept Iterable = requires(Iter it)
+{
+  { std::begin(it) } -> std::input_iterator;
+  { std::end(it)   } -> std::sentinel_for<decltype(std::begin(it))>;
+};
 
 // Concepts to limit type to pointnd and bbox
 template<typename U>

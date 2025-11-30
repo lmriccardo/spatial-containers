@@ -57,10 +57,10 @@ constexpr bbox<T, N> merge( bbox<T,N> const& box, U const& obj ) noexcept
     return bbox<T, N>{ new_min, new_max };
 }
 
-template<class T, std::size_t N, Containable U>
+template<class T, std::size_t N>
 constexpr bool overlaps( bbox<T, N> const& box1, bbox<T, N> const& box2, 
     std::size_t idx ) noexcept
-{ return box1.max()[idx] < box2.min()[idx] || box2.max()[idx] < box1.min()[idx]; }
+{ return !(box1.max()[idx] < box2.min()[idx] || box2.max()[idx] < box1.min()[idx]); }
 
 template<class T, std::size_t N, Containable U>
 constexpr bool overlaps( bbox<T, N> const& box1, U const& obj ) noexcept
@@ -171,6 +171,21 @@ public:
      */
     constexpr T enlargement( bbox<T,N> const& other ) const noexcept
     { return sc::enlargement(*this, other); }
+
+    /**
+     * @brief Returns the hyper-volume of the N-dimensional rectangle.
+     */
+    constexpr T hvolume() const noexcept
+    {
+        T hvol_result{1}; // Initialize the hyper-vol result
+
+        for ( std::size_t dim_i = 0; dim_i < N; ++dim_i )
+        {
+            hvol_result *= (m_max[dim_i] - m_min[dim_i]);
+        }
+
+        return hvol_result;
+    }
 };
 
 template<typename T>
